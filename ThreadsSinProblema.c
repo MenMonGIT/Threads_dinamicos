@@ -23,7 +23,7 @@ void *mythread(void *arg) {
   	for(i=0;i<max;i++){
                 counter2=counter2+1;
 	} 
-  }
+  } 
   printf("%s: done\n", letter);
   return NULL;
 }
