@@ -1,50 +1,71 @@
-/*
- * Este programa ilustra el problema de concurrencia que se presenta al momento
- * que dos hilos intentan modificar una variable compartida.
- *
- * Ejemplo tomado del libro 'Operating Systems Three Easy Pieces'.
- *
- * Adaptado por: John Sanabria - john.sanabria@correounivalle.edu.co
- * Fecha: 2023-05-17
- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
 
 int max;
+int num_thread;
+int *counter;  // Contador global
 
+// Función que será ejecutada por cada hilo
 void *mythread(void *arg) {
-  char *numero = arg;   
-  int i; // stack (private per thread)
-  printf("%s: begin [addr of i: %p]\n", numero, &i);
-  for(i=0;i<max;i++){
-    counter[atoi(numero)]=counter[atoi(numero)]+1;
+  int numero = *(int *)arg;  // Convertimos el argumento a int, que es el índice del hilo
+  
+  printf("Thread %d: begin\n", numero);
+  
+  // Cada hilo incrementa su propio contador 'counter[numero]' durante 'max' iteraciones
+  for (int i = 0; i < max; i++) {
+    counter[numero] = counter[numero] + 1;
   }
-  printf("%s: done\n", numero); 
+  
+  printf("Thread %d: done\n", numero); 
   return NULL;
 }
 
 int main(int argc, char *argv[]) {
   if (argc != 3) {
-	fprintf(stderr, "usage: main-first <loopcount><Threadscount>\n");
-	exit(1);
+    fprintf(stderr, "usage: main-first <loopcount> <Threadscount>\n");
+    exit(1);
   }
-  int i;
-  int z;
+  
   max = atoi(argv[1]);
+  num_thread = atoi(argv[2]);
   
-  pthread_t hilos[atoi(argv[2])];
-  //printf("main: begin [counter = %d] [%p]\n", counter[0], &counter[0]);
-  for (i=0;i<atoi(argv[2]);i++){
-    pthread_create(&hilos[i], NULL, mythread,"1");   //creacion de los  multiples hilos y asigna la funcion de ejecucion de cada hilo 
+  // Asignamos memoria para 'counter' para tener un contador por hilo
+  counter = (int *)malloc(num_thread * sizeof(int));
+  if (counter == NULL) {
+    fprintf(stderr, "Error, No se asigno correctamente espacio de memoria\n");
+    exit(1);
+  }
+
+  // Inicializamos el arreglo 'counter' en cero
+  for (int i = 0; i < num_thread; i++) {
+    counter[i] = 0;
   }
   
-  for (z=0;z<atoi(argv[2]);z++){ //This wait for threads to finish
+  pthread_t hilos[num_thread];  // Creamos los hilos
+  int indices[num_thread];  // Array para almacenar los índices de los hilos
+  
+  // Creamos los hilos y les asignamos el índice correspondiente
+  for (int i = 0; i < num_thread; i++) {
+    indices[i] = i;  // Asignamos el índice al hilo
+    pthread_create(&hilos[i], NULL, mythread, (void *)&indices[i]);  // Pasamos la dirección del índice
+  }
+
+  // Esperamos a que todos los hilos terminen
+  for (int z = 0; z < num_thread; z++) {  
     pthread_join(hilos[z], NULL);
-  }  
-   
-  printf("main: done\n [counter: %d]\n [should: %d]\n",
-	  counter, max*atoi(argv[2]));
-  printf(counter[1]);
+  }
+
+  // Mostramos el resultado final
+  int total = 0;
+  for (int i = 0; i < num_thread; i++) {
+    total += counter[i];
+  }
+
+  printf("main: done\n [total counter: %d]\n [should be: %d]\n", total, max * num_thread);
+
+  // Liberamos la memoria asignada para 'counter'
+  free(counter);
+
   return 0;
 }
